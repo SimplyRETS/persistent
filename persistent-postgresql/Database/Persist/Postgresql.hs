@@ -45,6 +45,7 @@ import Control.Monad.Logger (MonadLogger, runNoLoggingT)
 import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Trans.Writer (WriterT(..), runWriterT)
 
+import qualified Blaze.ByteString.Builder as BB
 import qualified Blaze.ByteString.Builder.Char8 as BBB
 import Data.Acquire (Acquire, mkAcquire, with)
 import Data.Aeson
@@ -439,7 +440,8 @@ instance PGTF.ToField P where
     toField (P PersistNull)            = PGTF.toField PG.Null
     toField (P (PersistList l))        = PGTF.toField $ listToJSON l
     toField (P (PersistMap m))         = PGTF.toField $ mapToJSON m
-    toField (P (PersistDbSpecific s))  = PGTF.toField (Unknown s)
+    toField (P (PersistDbSpecific s))  = PGTF.toField (UnknownEscaped s)
+    toField (P (PersistDbSpecificUnescaped s)) = PGTF.toField (UnknownUnEscaped s)
     toField (P (PersistArray a))       = PGTF.toField $ PG.PGArray $ P <$> a
     toField (P (PersistObjectId _))    =
         error "Refusing to serialize a PersistObjectId to a PostgreSQL value"
@@ -541,17 +543,37 @@ instance PersistField PgInterval where
 instance PersistFieldSql PgInterval where
   sqlType _ = SqlOther "interval"
 
-newtype Unknown = Unknown { unUnknown :: ByteString }
+data Unknown
+  = UnknownEscaped ByteString
+  | UnknownUnEscaped ByteString
   deriving (Eq, Show, Read, Ord, Typeable)
+
+unUnknown :: Unknown -> ByteString
+unUnknown (UnknownEscaped bs) = bs
+unUnknown (UnknownUnEscaped bs) = bs
+
+-- | A list of oid's that must be unescaped when
+-- splicing
+unescapedOids :: [LibPQ.Oid]
+unescapedOids = map PS.typoid [
+   PS.point
+ , PS.polygon
+ , PS.lseg
+ , PS.box
+ , PS.circle
+ ]
 
 instance PGFF.FromField Unknown where
     fromField f mdata =
       case mdata of
         Nothing  -> PGFF.returnError PGFF.UnexpectedNull f "Database.Persist.Postgresql/PGFF.FromField Unknown"
-        Just dat -> return (Unknown dat)
+        Just dat -> return $ if PGFF.typeOid f `elem` unescapedOids
+                                then UnknownUnEscaped dat
+                                else UnknownEscaped dat
 
 instance PGTF.ToField Unknown where
-    toField (Unknown a) = PGTF.Escape a
+    toField (UnknownEscaped a)   = PGTF.Escape a
+    toField (UnknownUnEscaped a) = PGTF.Plain (BB.fromByteString a)
 
 type Getter a = PGFF.FieldParser a
 
@@ -586,6 +608,20 @@ builtinGetters = I.fromList
     , (k PS.json,        convertPV (PersistByteString . unUnknown))
     , (k PS.jsonb,       convertPV (PersistByteString . unUnknown))
     , (k PS.unknown,     convertPV (PersistByteString . unUnknown))
+
+      -- PostgreSQL built-in geometry types. Can be represented as
+      -- 'PersistDbSpecific' or 'ByteString'. Not sure which is
+      -- better, yet.
+    , (k PS.point,       convertPV (PersistByteString . unUnknown))
+    , (k PS.polygon,     convertPV (PersistByteString . unUnknown))
+    , (k PS.lseg,        convertPV (PersistByteString . unUnknown))
+    , (k PS.box,         convertPV (PersistByteString . unUnknown))
+    , (k PS.circle,      convertPV (PersistByteString . unUnknown))
+    -- , (k PS.point,       convertPV (PersistDbSpecific . unUnknown))
+    -- , (k PS.polygon,     convertPV (PersistDbSpecific . unUnknown))
+    -- , (k PS.lseg,        convertPV (PersistDbSpecific . unUnknown))
+    -- , (k PS.box,         convertPV (PersistDbSpecific . unUnknown))
+    -- , (k PS.circle,      convertPV (PersistDbSpecific . unUnknown))
 
     -- Array types: same order as above.
     -- The OIDs were taken from pg_type.
