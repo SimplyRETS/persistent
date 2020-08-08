@@ -2,30 +2,34 @@
 {-# OPTIONS_GHC -fno-warn-deprecations #-} -- usage of Error typeclass
 module Database.Persist.Types.Base where
 
-import Control.Arrow (second)
-import Control.Exception (Exception)
-import Control.Monad.Trans.Error (Error (..))
-import qualified Data.Aeson as A
-import Data.Bits (shiftL, shiftR)
-import Data.ByteString (ByteString, foldl')
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Base64 as B64
-import qualified Data.ByteString.Char8 as BS8
-import qualified Data.HashMap.Strict as HM
-import Data.Int (Int64)
-import Data.Map (Map)
+import           Control.Arrow             (second)
+import           Control.Exception         (Exception)
+import           Control.Monad.Trans.Error (Error (..))
+import qualified Data.Aeson                as A
+import           Data.Bits                 (shiftL, shiftR)
+import           Data.ByteString           (ByteString, foldl')
+import qualified Data.ByteString           as BS
+import qualified Data.ByteString.Base64    as B64
+import qualified Data.ByteString.Char8     as BS8
+import qualified Data.HashMap.Strict       as HM
+import           Data.Int                  (Int64)
+import           Data.Map                  (Map)
 import qualified Data.Scientific
-import Data.Text (Text, pack)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import Data.Text.Encoding.Error (lenientDecode)
-import Data.Time (Day, TimeOfDay, UTCTime)
-import Data.Typeable (Typeable)
-import qualified Data.Vector as V
-import Data.Word (Word32)
-import Numeric (showHex, readHex)
-import Web.PathPieces (PathPiece(..))
-import Web.HttpApiData (ToHttpApiData (..), FromHttpApiData (..), parseUrlPieceMaybe, showTextData, readTextData, parseBoundedTextData)
+import           Data.Text                 (Text, pack)
+import qualified Data.Text                 as T
+import qualified Data.Text.Encoding        as TE
+import           Data.Text.Encoding.Error  (lenientDecode)
+import           Data.Time                 (Day, TimeOfDay, UTCTime)
+import           Data.Typeable             (Typeable)
+import qualified Data.Vector               as V
+import           Data.Word                 (Word32)
+import           Numeric                   (readHex, showHex)
+import           Web.HttpApiData           (FromHttpApiData (..),
+                                            ToHttpApiData (..),
+                                            parseBoundedTextData,
+                                            parseUrlPieceMaybe, readTextData,
+                                            showTextData)
+import           Web.PathPieces            (PathPiece (..))
 
 
 -- | A 'Checkmark' should be used as a field type whenever a
@@ -331,6 +335,7 @@ data PersistValue = PersistText Text
                   | PersistObjectId ByteString -- ^ Intended especially for MongoDB backend
                   | PersistArray [PersistValue] -- ^ Intended especially for PostgreSQL backend for text arrays
                   | PersistDbSpecific ByteString -- ^ Using 'PersistDbSpecific' allows you to use types specific to a particular backend
+                  | PersistDbSpecificUnescaped ByteString -- ^ Using 'PersistDbSpecificUnescaped' allows you to use types specific to a particular backend with Unescaped syntax
 -- For example, below is a simple example of the PostGIS geography type:
 --
 -- @
@@ -396,6 +401,7 @@ fromPersistValueText (PersistMap _) = Left "Cannot convert PersistMap to Text"
 fromPersistValueText (PersistObjectId _) = Left "Cannot convert PersistObjectId to Text"
 fromPersistValueText (PersistArray _) = Left "Cannot convert PersistArray to Text"
 fromPersistValueText (PersistDbSpecific _) = Left "Cannot convert PersistDbSpecific to Text. See the documentation of PersistDbSpecific for an example of using a custom database type with Persistent."
+fromPersistValueText (PersistDbSpecificUnescaped _) = Left "Cannot convert PersistDbSpecificUnescaped to Text. See the documentation of PersistDbSpecificUnescaped for an example of using a custom database type with Persistent."
 
 instance A.ToJSON PersistValue where
     toJSON (PersistText t) = A.String $ T.cons 's' t
@@ -411,6 +417,7 @@ instance A.ToJSON PersistValue where
     toJSON (PersistList l) = A.Array $ V.fromList $ map A.toJSON l
     toJSON (PersistMap m) = A.object $ map (second A.toJSON) m
     toJSON (PersistDbSpecific b) = A.String $ T.cons 'p' $ TE.decodeUtf8 $ B64.encode b
+    toJSON (PersistDbSpecificUnescaped b) = A.String $ T.cons 'e' $ TE.decodeUtf8 $ B64.encode b
     toJSON (PersistArray a) = A.Array $ V.fromList $ map A.toJSON a
     toJSON (PersistObjectId o) =
       A.toJSON $ showChar 'o' $ showHexLen 8 (bs2i four) $ showHexLen 16 (bs2i eight) ""
@@ -434,6 +441,8 @@ instance A.FromJSON PersistValue where
         case T.uncons t0 of
             Nothing -> fail "Null string"
             Just ('p', t) -> either (fail "Invalid base64") (return . PersistDbSpecific)
+                           $ B64.decode $ TE.encodeUtf8 t
+            Just ('e', t) -> either (fail "Invalid base64") (return . PersistDbSpecificUnescaped)
                            $ B64.decode $ TE.encodeUtf8 t
             Just ('s', t) -> return $ PersistText t
             Just ('b', t) -> either (fail "Invalid base64") (return . PersistByteString)
