@@ -1,8 +1,8 @@
-{-# LANGUAGE DeriveDataTypeable  #-}
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | A postgresql backend for persistent.
 module Database.Persist.Postgresql
@@ -26,56 +26,56 @@ module Database.Persist.Postgresql
 
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 
-import qualified Database.PostgreSQL.Simple                 as PG
-import qualified Database.PostgreSQL.Simple.FromField       as PGFF
-import qualified Database.PostgreSQL.Simple.Internal        as PG
-import           Database.PostgreSQL.Simple.Ok              (Ok (..))
-import qualified Database.PostgreSQL.Simple.ToField         as PGTF
-import qualified Database.PostgreSQL.Simple.Transaction     as PG
+import qualified Database.PostgreSQL.Simple as PG
+import qualified Database.PostgreSQL.Simple.Internal as PG
+import qualified Database.PostgreSQL.Simple.FromField as PGFF
+import qualified Database.PostgreSQL.Simple.ToField as PGTF
+import qualified Database.PostgreSQL.Simple.Transaction as PG
+import qualified Database.PostgreSQL.Simple.Types as PG
 import qualified Database.PostgreSQL.Simple.TypeInfo.Static as PS
-import qualified Database.PostgreSQL.Simple.Types           as PG
+import Database.PostgreSQL.Simple.Ok (Ok (..))
 
 import Control.Arrow
-import Control.Exception          (Exception, throw, throwIO)
-import Control.Monad              (forM)
-import Control.Monad.IO.Unlift    (MonadIO (..), MonadUnliftIO)
-import Control.Monad.Logger       (MonadLogger, runNoLoggingT)
+import Control.Exception (Exception, throw, throwIO)
+import Control.Monad (forM)
+import Control.Monad.IO.Unlift (MonadIO (..), MonadUnliftIO)
+import Control.Monad.Logger (MonadLogger, runNoLoggingT)
 import Control.Monad.Trans.Reader (runReaderT)
-import Control.Monad.Trans.Writer (WriterT (..), runWriterT)
+import Control.Monad.Trans.Writer (WriterT(..), runWriterT)
 
-import qualified Blaze.ByteString.Builder       as BB
+import qualified Blaze.ByteString.Builder as BB
 import qualified Blaze.ByteString.Builder.Char8 as BBB
-import           Data.Acquire                   (Acquire, mkAcquire, with)
-import           Data.Aeson
-import           Data.Aeson.Types               (modifyFailure)
-import           Data.ByteString                (ByteString)
-import qualified Data.ByteString.Char8          as B8
-import           Data.Conduit
-import qualified Data.Conduit.List              as CL
-import           Data.Data
-import           Data.Either                    (partitionEithers)
-import           Data.Fixed                     (Pico)
-import           Data.Function                  (on)
-import           Data.Int                       (Int64)
-import qualified Data.IntMap                    as I
-import           Data.IORef
-import           Data.List                      (find, groupBy, sort)
-import           Data.List.NonEmpty             (NonEmpty)
-import qualified Data.List.NonEmpty             as NEL
-import qualified Data.Map                       as Map
-import           Data.Maybe
-import           Data.Monoid                    ((<>))
-import           Data.Pool                      (Pool)
-import           Data.Text                      (Text)
-import qualified Data.Text                      as T
-import qualified Data.Text.Encoding             as T
-import qualified Data.Text.IO                   as T
-import           Data.Text.Read                 (rational)
-import           Data.Time                      (localTimeToUTC, utc)
-import           Data.Typeable                  (Typeable)
-import           System.Environment             (getEnvironment)
+import Data.Acquire (Acquire, mkAcquire, with)
+import Data.Aeson
+import Data.Aeson.Types (modifyFailure)
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as B8
+import Data.Conduit
+import qualified Data.Conduit.List as CL
+import Data.Data
+import Data.Either (partitionEithers)
+import Data.Fixed (Pico)
+import Data.Function (on)
+import Data.Int (Int64)
+import qualified Data.IntMap as I
+import Data.IORef
+import Data.List (find, sort, groupBy)
+import Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NEL
+import qualified Data.Map as Map
+import Data.Maybe
+import Data.Monoid ((<>))
+import Data.Pool (Pool)
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.IO as T
+import Data.Text.Read (rational)
+import Data.Time (utc, localTimeToUTC)
+import Data.Typeable (Typeable)
+import System.Environment (getEnvironment)
 
-import           Database.Persist.Sql
+import Database.Persist.Sql
 import qualified Database.Persist.Sql.Util as Util
 
 -- | A @libpq@ connection string.  A simple example of connection

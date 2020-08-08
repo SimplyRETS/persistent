@@ -2,34 +2,30 @@
 {-# OPTIONS_GHC -fno-warn-deprecations #-} -- usage of Error typeclass
 module Database.Persist.Types.Base where
 
-import           Control.Arrow             (second)
-import           Control.Exception         (Exception)
-import           Control.Monad.Trans.Error (Error (..))
-import qualified Data.Aeson                as A
-import           Data.Bits                 (shiftL, shiftR)
-import           Data.ByteString           (ByteString, foldl')
-import qualified Data.ByteString           as BS
-import qualified Data.ByteString.Base64    as B64
-import qualified Data.ByteString.Char8     as BS8
-import qualified Data.HashMap.Strict       as HM
-import           Data.Int                  (Int64)
-import           Data.Map                  (Map)
+import Control.Arrow (second)
+import Control.Exception (Exception)
+import Control.Monad.Trans.Error (Error (..))
+import qualified Data.Aeson as A
+import Data.Bits (shiftL, shiftR)
+import Data.ByteString (ByteString, foldl')
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Base64 as B64
+import qualified Data.ByteString.Char8 as BS8
+import qualified Data.HashMap.Strict as HM
+import Data.Int (Int64)
+import Data.Map (Map)
 import qualified Data.Scientific
-import           Data.Text                 (Text, pack)
-import qualified Data.Text                 as T
-import qualified Data.Text.Encoding        as TE
-import           Data.Text.Encoding.Error  (lenientDecode)
-import           Data.Time                 (Day, TimeOfDay, UTCTime)
-import           Data.Typeable             (Typeable)
-import qualified Data.Vector               as V
-import           Data.Word                 (Word32)
-import           Numeric                   (readHex, showHex)
-import           Web.HttpApiData           (FromHttpApiData (..),
-                                            ToHttpApiData (..),
-                                            parseBoundedTextData,
-                                            parseUrlPieceMaybe, readTextData,
-                                            showTextData)
-import           Web.PathPieces            (PathPiece (..))
+import Data.Text (Text, pack)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+import Data.Text.Encoding.Error (lenientDecode)
+import Data.Time (Day, TimeOfDay, UTCTime)
+import Data.Typeable (Typeable)
+import qualified Data.Vector as V
+import Data.Word (Word32)
+import Numeric (showHex, readHex)
+import Web.PathPieces (PathPiece(..))
+import Web.HttpApiData (ToHttpApiData (..), FromHttpApiData (..), parseUrlPieceMaybe, showTextData, readTextData, parseBoundedTextData)
 
 
 -- | A 'Checkmark' should be used as a field type whenever a
