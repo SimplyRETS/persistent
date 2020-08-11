@@ -487,7 +487,7 @@ instance A.FromJSON PersistValue where
             Nothing -> fail "Null string"
             Just ('p', t) -> either (\_ -> fail "Invalid base64") (return . PersistDbSpecific)
                            $ B64.decode $ TE.encodeUtf8 t
-            Just ('e', t) -> either (fail "Invalid base64") (return . PersistDbSpecificUnescaped)
+            Just ('e', t) -> either (\_ -> fail "Invalid base64") (return . PersistDbSpecificUnescaped)
                            $ B64.decode $ TE.encodeUtf8 t
             Just ('s', t) -> return $ PersistText t
             Just ('b', t) -> either (\_ -> fail "Invalid base64") (return . PersistByteString)
