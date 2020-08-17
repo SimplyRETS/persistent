@@ -48,6 +48,9 @@ import Database.Persist.Sql
 class ToRow a where
     toRow :: a -> NonEmpty PersistValue
 
+instance PersistField a => ToRow (NonEmpty a) where
+    toRow = NonEmpty.map toPersistValue
+
 instance PersistField a => ToRow (Single a) where
     toRow (Single a) = toPersistValue a :| []
 
@@ -92,12 +95,12 @@ parseStr a ('^':'{':xs) = Literal (reverse a) : parseHaskell TableName  [] xs
 parseStr a ('@':'{':xs) = Literal (reverse a) : parseHaskell ColumnName [] xs
 parseStr a (x:xs)       = parseStr (x:a) xs
 
-interpolateValues :: PersistField a => NonEmpty a -> (Text, [[PersistValue]]) -> (Text, [[PersistValue]])
+interpolateValues :: ToRow a => a -> (Text, [[PersistValue]]) -> (Text, [[PersistValue]])
 interpolateValues xs =
     first (mkPlaceholders values <>) .
     second (NonEmpty.toList values :)
     where
-    values = NonEmpty.map toPersistValue xs
+    values = toRow xs
 
 interpolateRows :: ToRow a => NonEmpty a -> (Text, [[PersistValue]]) -> (Text, [[PersistValue]])
 interpolateRows xs =
