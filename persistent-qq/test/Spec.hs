@@ -6,6 +6,7 @@ import Control.Monad.Logger
 import Control.Monad.Trans.Resource
 import Control.Monad.Reader
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.List (sort)
 import Data.Text (Text)
 import Test.Hspec
 import Test.HUnit ((@?=))
@@ -22,19 +23,17 @@ main = hspec spec
 _debugOn :: Bool
 _debugOn = False
 
-runConn :: MonadUnliftIO m => SqlPersistT (LoggingT m) t -> m ()
+runConn :: MonadUnliftIO m => SqlPersistT (LoggingT m) a -> m a
 runConn f = do
   let printDebug = if _debugOn then print . fromLogStr else void . return
   flip runLoggingT (\_ _ _ s -> printDebug s) $ do
-    _ <- withSqliteConn ":memory:" $ runSqlConn f
-    return ()
+    withSqliteConn ":memory:" $ runSqlConn f
 
-db :: SqlPersistT (LoggingT (ResourceT IO)) () -> IO ()
+db :: SqlPersistT (LoggingT (ResourceT IO)) a -> IO a
 db actions = do
   runResourceT $ runConn $ do
       _ <- runMigrationSilent testMigrate
-      actions
-      transactionUndo
+      actions <* transactionUndo
 
 spec :: Spec
 spec = describe "persistent-qq" $ do
@@ -145,3 +144,11 @@ spec = describe "persistent-qq" $ do
         |]
         liftIO $ ret @?= [ (Entity p1k p1)
                          , (Entity p3k p3) ]
+
+    it "sqlQQ/rows syntax" $ do
+        let rows :: NonEmpty (Text, Int)
+            rows = ("Mathias", 23) :| ("Norbert", 44) : ("Cassandra", 19) : []
+        db $ do
+            [executeQQ|INSERT INTO ^{Person} (@{PersonName}, @{PersonAge}) VALUES *{rows}|]
+            map unSingle <$> [sqlQQ|SELECT @{PersonName} FROM ^{Person} ORDER BY @{PersonName}|]
+        `shouldReturn` sort ["Mathias", "Norbert", "Cassandra" :: Text]
